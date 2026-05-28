@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixelfit — Image Size Resizer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,wght@0,100;0,300;0,600;1,300&display=swap');
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #171717;
+    --border: #2a2a2a;
+    --accent: #c8f557;
+    --accent-dim: #9cbe3a;
+    --text: #e8e8e8;
+    --muted: #666;
+    --danger: #ff5f57;
+    --success: #57d980;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 20px 80px;
+  }
+
+  header {
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 56px;
+  }
+
+  .wordmark {
+    font-family: 'Fraunces', serif;
+    font-size: 13px;
+    font-weight: 300;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(36px, 6vw, 56px);
+    font-weight: 100;
+    line-height: 1.1;
+    margin-top: 12px;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .subtitle {
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 680px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  /* Drop zone */
+  .drop-zone {
+    padding: 48px 40px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    position: relative;
+    transition: background 0.15s;
+    text-align: center;
+  }
+
+  .drop-zone:hover,
+  .drop-zone.dragover { background: #1d1d1d; }
+
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+  }
+
+  .drop-zone-label {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .drop-zone-label strong {
+    display: block;
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 400;
+    margin-bottom: 4px;
+  }
+
+  /* Preview strip */
+  .preview-strip {
+    display: none;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: #131313;
+  }
+
+  .preview-strip.visible { display: flex; }
+
+  .preview-thumb {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+  }
+
+  .preview-meta { flex: 1; }
+
+  .preview-name {
+    font-size: 12px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 320px;
+  }
+
+  .preview-info {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+    display: flex;
+    gap: 16px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #252525;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .clear-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    padding: 4px 8px;
+    transition: color 0.15s;
+  }
+  .clear-btn:hover { color: var(--danger); }
+
+  /* Controls */
+  .controls {
+    padding: 32px 40px;
+  }
+
+  .field-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .field { flex: 1; }
+
+  label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  input[type="number"], select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    padding: 10px 14px;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color 0.15s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  input[type="number"]:focus,
+  select:focus { border-color: var(--accent); }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+    cursor: pointer;
+  }
+
+  .hint {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 24px 0;
+  }
+
+  /* Quality slider */
+  .quality-row {
+    margin-bottom: 24px;
+  }
+
+  .quality-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .quality-val {
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    border-radius: 0;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+  }
+
+  /* Mode toggle */
+  .mode-toggle {
+    display: flex;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .mode-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+
+  .mode-btn.active {
+    background: var(--accent);
+    color: #0e0e0e;
+    font-weight: 500;
+  }
+
+  /* Action button */
+  .action-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #0e0e0e;
+    border: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+  }
+
+  .action-btn:hover { background: var(--accent-dim); }
+  .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* Progress / log */
+  .log-area {
+    display: none;
+    background: #0a0a0a;
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 2;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+
+  .log-area.visible { display: block; }
+
+  .log-line { display: flex; gap: 12px; }
+  .log-line .ts { color: #3a3a3a; flex-shrink: 0; }
+  .log-line.ok .msg { color: var(--success); }
+  .log-line.err .msg { color: var(--danger); }
+  .log-line.info .msg { color: var(--muted); }
+
+  /* Result */
+  .result-area {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 24px 40px;
+    background: #101510;
+  }
+
+  .result-area.visible { display: block; }
+
+  .result-header {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--success);
+    margin-bottom: 16px;
+  }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .result-stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    border-radius: 2px;
+  }
+
+  .result-stat-label {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .result-stat-val {
+    font-size: 16px;
+    color: var(--text);
+  }
+
+  .result-stat-val.green { color: var(--success); }
+  .result-stat-val.yellow { color: var(--accent); }
+
+  .download-btn {
+    display: block;
+    width: 100%;
+    background: none;
+    border: 1px solid var(--success);
+    color: var(--success);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 12px;
+    border-radius: 2px;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .download-btn:hover {
+    background: var(--success);
+    color: #0e0e0e;
+  }
+
+  footer {
+    margin-top: 40px;
+    font-size: 10px;
+    color: #333;
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+
+  /* Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid #0e0e0e;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark">Pixelfit</div>
+  <h1>Resize to <em>exact</em><br>file size.</h1>
+  <p class="subtitle">// no uploads · no servers · runs entirely in your browser</p>
+</header>
+
+<div class="card">
+
+  <!-- Drop zone -->
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept="image/jpeg,image/png,image/jpg">
+    <div class="drop-icon">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path d="M12 16V8M12 8l-3 3M12 8l3 3" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.2"/>
+      </svg>
+    </div>
+    <div class="drop-zone-label">
+      <strong>Drop image here or click to browse</strong>
+      JPG · PNG supported
+    </div>
+  </div>
+
+  <!-- Preview strip -->
+  <div class="preview-strip" id="previewStrip">
+    <img class="preview-thumb" id="previewThumb" src="" alt="preview">
+    <div class="preview-meta">
+      <div class="preview-name" id="previewName">—</div>
+      <div class="preview-info">
+        <span id="previewSize">—</span>
+        <span id="previewDims">—</span>
+        <span id="previewType" class="badge">—</span>
+      </div>
+    </div>
+    <button class="clear-btn" id="clearBtn">✕ clear</button>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+
+    <div class="field-row">
+      <div class="field">
+        <label>Target Size</label>
+        <input type="number" id="targetSize" placeholder="e.g. 200" min="1" step="1">
+      </div>
+      <div class="field" style="max-width:110px;">
+        <label>Unit</label>
+        <select id="unitSelect">
+          <option value="KB">KB</option>
+          <option value="MB">MB</option>
+          <option value="B">Bytes</option>
+        </select>
+      </div>
+    </div>
+    <p class="hint">Enter the target file size. The algorithm will iteratively adjust quality and/or dimensions to match it as closely as possible.</p>
+
+    <div class="divider"></div>
+
+    <div style="margin-bottom:12px;">
+      <label>Resize strategy</label>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="modeQuality" data-mode="quality">Quality only</button>
+        <button class="mode-btn" id="modeDims" data-mode="dims">Shrink dimensions</button>
+        <button class="mode-btn" id="modeBoth" data-mode="both">Both (best fit)</button>
+      </div>
+      <p class="hint">
+        <b>Quality only</b> — changes JPEG compression. Works for shrinking; limited when increasing.
+        <br><b>Shrink dimensions</b> — scales resolution to hit size.
+        <br><b>Both</b> — combines both for the closest possible match.
+      </p>
+    </div>
+
+    <div class="quality-row">
+      <div class="quality-header">
+        <label style="margin:0;">Initial quality</label>
+        <span class="quality-val" id="qualityVal">92</span>
+      </div>
+      <input type="range" id="qualitySlider" min="1" max="100" value="92">
+      <p class="hint" style="margin-top:6px;">Starting quality for the iterative search (for JPEG output). PNG output is lossless.</p>
+    </div>
+
+    <div class="field" style="margin-bottom:24px;">
+      <label>Output format</label>
+      <select id="outputFormat">
+        <option value="image/jpeg">JPEG</option>
+        <option value="image/png">PNG (lossless, larger)</option>
+      </select>
+    </div>
+
+    <button class="action-btn" id="resizeBtn" disabled>Resize image</button>
+  </div>
+
+  <!-- Log -->
+  <div class="log-area" id="logArea"></div>
+
+  <!-- Result -->
+  <div class="result-area" id="resultArea">
+    <div class="result-header">✓ Done</div>
+    <div class="result-grid">
+      <div class="result-stat">
+        <div class="result-stat-label">Original</div>
+        <div class="result-stat-val" id="rOriginal">—</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-label">Output</div>
+        <div class="result-stat-val green" id="rOutput">—</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-label">Δ diff</div>
+        <div class="result-stat-val yellow" id="rDiff">—</div>
+      </div>
+    </div>
+    <a id="downloadLink" class="download-btn" download="pixelfit-output.jpg">↓ Download resized image</a>
+  </div>
+
+</div>
+
+<footer>All processing happens locally — your images never leave your device.</footer>
+
+<script>
+(() => {
+  const fileInput = document.getElementById('fileInput');
+  const dropZone = document.getElementById('dropZone');
+  const previewStrip = document.getElementById('previewStrip');
+  const previewThumb = document.getElementById('previewThumb');
+  const previewName = document.getElementById('previewName');
+  const previewSize = document.getElementById('previewSize');
+  const previewDims = document.getElementById('previewDims');
+  const previewType = document.getElementById('previewType');
+  const clearBtn = document.getElementById('clearBtn');
+  const targetSizeInput = document.getElementById('targetSize');
+  const unitSelect = document.getElementById('unitSelect');
+  const qualitySlider = document.getElementById('qualitySlider');
+  const qualityVal = document.getElementById('qualityVal');
+  const outputFormat = document.getElementById('outputFormat');
+  const resizeBtn = document.getElementById('resizeBtn');
+  const logArea = document.getElementById('logArea');
+  const resultArea = document.getElementById('resultArea');
+  const downloadLink = document.getElementById('downloadLink');
+  const rOriginal = document.getElementById('rOriginal');
+  const rOutput = document.getElementById('rOutput');
+  const rDiff = document.getElementById('rDiff');
+
+  let currentFile = null;
+  let currentImg = null;
+  let strategy = 'quality';
+
+  // Mode toggle
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      strategy = btn.dataset.mode;
+    });
+  });
+
+  qualitySlider.addEventListener('input', () => { qualityVal.textContent = qualitySlider.value; });
+
+  // Drag and drop
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) loadFile(fileInput.files[0]);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    currentFile = null; currentImg = null;
+    fileInput.value = '';
+    previewStrip.classList.remove('visible');
+    resizeBtn.disabled = true;
+    hideLog(); hideResult();
+  });
+
+  function loadFile(f) {
+    if (!f.type.match(/image\/(jpeg|jpg|png)/)) { alert('Please upload a JPG or PNG file.'); return; }
+    currentFile = f;
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => {
+      currentImg = img;
+      previewThumb.src = url;
+      previewName.textContent = f.name;
+      previewSize.textContent = fmtBytes(f.size);
+      previewDims.textContent = `${img.naturalWidth} × ${img.naturalHeight}`;
+      previewType.textContent = f.type === 'image/png' ? 'PNG' : 'JPG';
+      previewStrip.classList.add('visible');
+      resizeBtn.disabled = false;
+      hideResult();
+    };
+    img.src = url;
+  }
+
+  function fmtBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(2) + ' MB';
+  }
+
+  function toBytes(val, unit) {
+    if (unit === 'MB') return val * 1048576;
+    if (unit === 'KB') return val * 1024;
+    return val;
+  }
+
+  function hideLog() { logArea.classList.remove('visible'); logArea.innerHTML = ''; }
+  function hideResult() { resultArea.classList.remove('visible'); }
+
+  function log(msg, type = 'info') {
+    logArea.classList.add('visible');
+    const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const line = document.createElement('div');
+    line.className = `log-line ${type}`;
+    line.innerHTML = `<span class="ts">[${ts}]</span><span class="msg">${msg}</span>`;
+    logArea.appendChild(line);
+    logArea.scrollTop = logArea.scrollHeight;
+  }
+
+  // Render image to canvas blob at given quality + scale
+  function canvasToBlob(img, scale, quality, mime) {
+    return new Promise(resolve => {
+      const w = Math.max(1, Math.round(img.naturalWidth * scale));
+      const h = Math.max(1, Math.round(img.naturalHeight * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(resolve, mime, quality / 100);
+    });
+  }
+
+  // Binary search for quality at fixed scale
+  async function searchQuality(img, scale, targetBytes, mime, lo = 1, hi = 100) {
+    let best = null, bestBlob = null;
+    const maxIter = 16;
+    let iter = 0;
+    while (lo <= hi && iter++ < maxIter) {
+      const mid = Math.round((lo + hi) / 2);
+      const blob = await canvasToBlob(img, scale, mid, mime);
+      const diff = Math.abs(blob.size - targetBytes);
+      if (!best || diff < Math.abs(bestBlob.size - targetBytes)) { best = mid; bestBlob = blob; }
+      if (blob.size > targetBytes) hi = mid - 1;
+      else if (blob.size < targetBytes) lo = mid + 1;
+      else break;
+      log(`  quality ${mid} → ${fmtBytes(blob.size)}`, 'info');
+    }
+    return { quality: best, blob: bestBlob };
+  }
+
+  resizeBtn.addEventListener('click', async () => {
+    if (!currentImg || !currentFile) return;
+    const rawTarget = parseFloat(targetSizeInput.value);
+    if (!rawTarget || rawTarget <= 0) { alert('Please enter a valid target size.'); return; }
+    const targetBytes = toBytes(rawTarget, unitSelect.value);
+    const mime = outputFormat.value;
+    const ext = mime === 'image/png' ? 'png' : 'jpg';
+
+    resizeBtn.disabled = true;
+    resizeBtn.innerHTML = '<span class="spinner"></span>Processing…';
+    hideLog(); hideResult();
+
+    log(`Target: ${fmtBytes(targetBytes)} · Strategy: ${strategy} · Format: ${ext.toUpperCase()}`, 'info');
+    log(`Original: ${fmtBytes(currentFile.size)} · ${currentImg.naturalWidth}×${currentImg.naturalHeight}`, 'info');
+
+    try {
+      let resultBlob;
+
+      if (mime === 'image/png') {
+        // PNG is lossless — only dimension scaling works
+        log('PNG selected — using dimension scaling only.', 'info');
+        resultBlob = await scaleDims(currentImg, targetBytes, mime);
+      } else if (strategy === 'quality') {
+        log('Searching optimal quality at original dimensions…', 'info');
+        const { blob } = await searchQuality(currentImg, 1.0, targetBytes, mime);
+        resultBlob = blob;
+      } else if (strategy === 'dims') {
+        log('Scaling dimensions to hit target…', 'info');
+        resultBlob = await scaleDims(currentImg, targetBytes, mime);
+      } else {
+        // Both: try quality first, if not close enough also scale
+        log('Phase 1: quality search at original size…', 'info');
+        const { blob: qBlob } = await searchQuality(currentImg, 1.0, targetBytes, mime);
+        const qDiff = Math.abs(qBlob.size - targetBytes) / targetBytes;
+        if (qDiff < 0.05) {
+          log(`Quality-only achieved ${(qDiff * 100).toFixed(1)}% error — done.`, 'ok');
+          resultBlob = qBlob;
+        } else {
+          log(`Quality-only error ${(qDiff * 100).toFixed(1)}% — phase 2: scaling dimensions…`, 'info');
+          resultBlob = await scaleDims(currentImg, targetBytes, mime);
+        }
+      }
+
+      const outputBytes = resultBlob.size;
+      const pct = (((outputBytes - currentFile.size) / currentFile.size) * 100).toFixed(1);
+      const diffStr = pct > 0 ? `+${pct}%` : `${pct}%`;
+
+      log(`Output: ${fmtBytes(outputBytes)} (${diffStr} vs original)`, 'ok');
+
+      const url = URL.createObjectURL(resultBlob);
+      downloadLink.href = url;
+      downloadLink.download = `pixelfit-${rawTarget}${unitSelect.value}.${ext}`;
+
+      rOriginal.textContent = fmtBytes(currentFile.size);
+      rOutput.textContent = fmtBytes(outputBytes);
+      rDiff.textContent = `${diffStr} · ${fmtBytes(Math.abs(outputBytes - targetBytes))} off`;
+
+      resultArea.classList.add('visible');
+    } catch (e) {
+      log(`Error: ${e.message}`, 'err');
+    }
+
+    resizeBtn.disabled = false;
+    resizeBtn.textContent = 'Resize image';
+  });
+
+  async function scaleDims(img, targetBytes, mime) {
+    // Binary search on scale factor
+    let lo = 0.01, hi = 4.0; // allow upscaling too
+    let bestBlob = null;
+    const maxIter = 20;
+    let iter = 0;
+    while (iter++ < maxIter) {
+      const mid = (lo + hi) / 2;
+      const quality = mime === 'image/jpeg' ? parseInt(qualitySlider.value) : undefined;
+      const blob = await canvasToBlob(img, mid, quality || 92, mime);
+      const diff = Math.abs(blob.size - targetBytes);
+      if (!bestBlob || diff < Math.abs(bestBlob.size - targetBytes)) bestBlob = blob;
+      const w = Math.round(img.naturalWidth * mid);
+      const h = Math.round(img.naturalHeight * mid);
+      log(`  scale ${mid.toFixed(3)} → ${w}×${h} → ${fmtBytes(blob.size)}`, 'info');
+      if (Math.abs(blob.size - targetBytes) < 512) break;
+      if (blob.size > targetBytes) hi = mid;
+      else lo = mid;
+      if (hi - lo < 0.001) break;
+    }
+    return bestBlob;
+  }
+
+})();
+</script>
+</body>
+</html>
